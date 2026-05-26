@@ -1,12 +1,23 @@
 #!/usr/bin/env python3
-# patch-toggle3.sh — Mac equivalent of patch-toggle3.ps1
+# patch-toggle3.sh — UI 언어 토글 패치 (Void 1.4.x)
 # Usage: python3 patch-toggle3.sh
 
 import sys, os, hashlib, base64, json
 
 OUT_FILE = "/tmp/patch-result.txt"
-WBJS     = "/Applications/SonCode.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js"
-PROD     = "/Applications/SonCode.app/Contents/Resources/app/product.json"
+
+# SonCode.app → Void.app 순서로 탐색
+_BASE = "/Applications"
+for _APP in ("SonCode.app", "Void.app"):
+    _CANDIDATE = f"{_BASE}/{_APP}/Contents/Resources/app"
+    if os.path.isdir(_CANDIDATE):
+        APP_DIR = _CANDIDATE
+        break
+else:
+    APP_DIR = f"{_BASE}/SonCode.app/Contents/Resources/app"  # 에러 메시지용
+
+WBJS = f"{APP_DIR}/out/vs/workbench/workbench.desktop.main.js"
+PROD = f"{APP_DIR}/product.json"
 
 def write_out(msg):
     with open(OUT_FILE, "w", encoding="ascii", errors="replace") as f:
@@ -28,50 +39,48 @@ def update_checksum(content_bytes):
 
 try:
     if not os.path.exists(WBJS):
-        write_out(f"ERROR: SonCode not found at {WBJS}")
+        write_out(f"ERROR: workbench.js not found at {WBJS}")
         sys.exit(1)
 
     with open(WBJS, "r", encoding="utf-8") as f:
         content = f.read()
-
-    # Normalize CRLF -> LF (Mac build uses LF)
     content = content.replace("\r\n", "\n")
 
     if "korean-ag.toggleUiLocale" in content:
         write_out("Already patched")
         sys.exit(0)
 
-    new_code = (
-        "// [SonCode W19] UI Language Toggle\n"
-        "var KoreanAgToggleLocaleAction = class extends Action2 {\n"
-        "  constructor() {\n"
-        '    super({ id: "korean-ag.toggleUiLocale", title: { value: "SonCode: Toggle UI Language", original: "SonCode: Toggle UI Language" }, menu: { id: MenuId.CommandPalette } });\n'
-        "  }\n"
-        "  async run(accessor) {\n"
-        "    const localeService = accessor.get(ILocaleService);\n"
-        '    const isKorean = (globalThis._VSCODE_NLS_LANGUAGE || "en").startsWith("ko");\n'
-        '    await localeService.setLocale({ id: isKorean ? "en" : "ko", label: isKorean ? "English" : "\\ud55c\\uad6d\\uc5b4" });\n'
-        "  }\n"
-        "};\n\n"
+    # ── Void 1.4.x 패치 ──────────────────────────────────────────
+    # ce = Action2 base, Pde = ILocaleService token,
+    # CO.value() = current locale, F.CommandPalette = menu id
+    toggle_cls = (
+        ',KoreanAgToggle1494=class extends ce{'
+        'static{this.ID="korean-ag.toggleUiLocale"}'
+        'constructor(){'
+        'super({id:KoreanAgToggle1494.ID,'
+        'title:{value:"SonCode: Toggle UI Language",'
+        'original:"SonCode: Toggle UI Language"},'
+        'menu:{id:F.CommandPalette}})}'
+        'async run(e){'
+        'const s=e.get(Pde),isKo=CO.value().startsWith("ko");'
+        'await s.setLocale({id:isKo?"en":"ko",'
+        'label:isKo?"English":"\\ud55c\\uad6d\\uc5b4"})}}'
+    )
+    anchor_old = (
+        'async run(e){await e.get(Pde).clearLocalePreference()}},'
+        'zzs=class extends z{constructor(){super(),X(Wzs),X(Uzs),'
+    )
+    anchor_new = (
+        'async run(e){await e.get(Pde).clearLocalePreference()}}'
+        + toggle_cls
+        + ',zzs=class extends z{constructor(){super(),X(Wzs),X(Uzs),X(KoreanAgToggle1494),'
     )
 
-    search_str = "\n// out-build/vs/workbench/contrib/localization/common/localization.contribution.js"
-
-    if search_str not in content:
-        write_out("ERROR: search string not found")
+    if anchor_old not in content:
+        write_out("ERROR: search string not found (version mismatch?)")
         sys.exit(1)
 
-    content = content.replace(search_str, new_code + search_str, 1)
-
-    old_reg = "    registerAction2(ClearDisplayLanguageAction);"
-    new_reg = (
-        "    registerAction2(ClearDisplayLanguageAction);\n"
-        "    registerAction2(KoreanAgToggleLocaleAction);"
-    )
-    if old_reg not in content:
-        write_out("ERROR: registerAction2 anchor not found")
-        sys.exit(1)
-    content = content.replace(old_reg, new_reg, 1)
+    content = content.replace(anchor_old, anchor_new, 1)
 
     content_bytes = content.encode("utf-8")
     with open(WBJS, "w", encoding="utf-8", newline="\n") as f:
