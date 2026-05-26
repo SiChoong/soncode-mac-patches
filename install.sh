@@ -18,36 +18,66 @@ warn()    { echo -e "${YELLOW}[!]${NC} $1"; }
 error()   { echo -e "${RED}[✗]${NC} $1"; exit 1; }
 
 install_void() {
-    info "Void 최신 버전을 GitHub에서 다운로드합니다..."
-
-    # Apple Silicon / Intel 자동 감지
     ARCH=$(uname -m)
     if [ "$ARCH" = "arm64" ]; then
-        VOID_ASSET="Void_darwin_arm64.dmg"
+        ARCH_KEY="arm64"
     else
-        VOID_ASSET="Void_darwin_x64.dmg"
+        ARCH_KEY="x64"
     fi
 
+    info "Void 최신 버전을 GitHub에서 다운로드합니다... (arch: $ARCH_KEY)"
+
+    # GitHub Releases API에서 DMG URL 탐색 (파일명 패턴 여러 개 시도)
     LATEST_URL="https://api.github.com/repos/voideditor/void/releases/latest"
-    DOWNLOAD_URL=$(curl -fsSL "$LATEST_URL" \
-        | python3 -c "import sys,json; rel=json.load(sys.stdin); \
-          assets=[a['browser_download_url'] for a in rel['assets'] if '$VOID_ASSET' in a['name']]; \
-          print(assets[0] if assets else '')" 2>/dev/null || true)
+    DOWNLOAD_URL=$(curl -fsSL "$LATEST_URL" 2>/dev/null \
+        | python3 -c "
+import sys, json, re
+try:
+    rel = json.load(sys.stdin)
+    arch = '$ARCH_KEY'
+    assets = rel.get('assets', [])
+    # arm64/x64 DMG 패턴 매칭 (파일명 형식 무관)
+    for a in assets:
+        name = a['name'].lower()
+        url  = a['browser_download_url']
+        if name.endswith('.dmg') and arch in name:
+            print(url); sys.exit(0)
+    # 폴백: darwin이 들어간 DMG
+    for a in assets:
+        name = a['name'].lower()
+        if name.endswith('.dmg') and 'darwin' in name:
+            print(a['browser_download_url']); sys.exit(0)
+except Exception:
+    pass
+" 2>/dev/null || true)
 
     if [ -z "$DOWNLOAD_URL" ]; then
         echo ""
-        error "Void 자동 다운로드 실패. 아래 방법으로 수동 설치 후 다시 실행하세요:"
+        warn "Void 자동 다운로드 실패. 수동으로 설치해 주세요:"
         echo ""
-        echo "  1. https://voideditor.com 에서 Mac 버전 다운로드"
-        echo "  2. /Applications 에 Void.app 설치"
-        echo "  3. 이 스크립트 다시 실행: sudo bash install.sh"
+        echo "  ┌─────────────────────────────────────────────────────┐"
+        echo "  │  1. https://voideditor.com 에서 Mac 버전 다운로드   │"
+        echo "  │  2. DMG 열어서 Void.app을 /Applications 에 복사     │"
+        echo "  │  3. 아래 명령으로 패치만 적용:                       │"
+        echo "  │     bash apply-all.sh                               │"
+        echo "  └─────────────────────────────────────────────────────┘"
         echo ""
         exit 1
     fi
 
     info "다운로드 중: $DOWNLOAD_URL"
     TMP_DMG=$(mktemp /tmp/void_XXXXXX.dmg)
-    curl -fsSL --progress-bar -o "$TMP_DMG" "$DOWNLOAD_URL"
+    if ! curl -fsSL --progress-bar -o "$TMP_DMG" "$DOWNLOAD_URL"; then
+        echo ""
+        warn "다운로드 실패. 수동으로 설치해 주세요:"
+        echo ""
+        echo "  1. https://voideditor.com 에서 Mac 버전 다운로드"
+        echo "  2. /Applications 에 Void.app 설치"
+        echo "  3. bash apply-all.sh"
+        echo ""
+        rm -f "$TMP_DMG"
+        exit 1
+    fi
 
     info "Void.app 설치 중..."
     TMP_MNT=$(mktemp -d /tmp/void_mnt_XXXXXX)
