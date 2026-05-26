@@ -151,239 +151,163 @@ content = content.replace("\r\n", "\n")
 
 errors = []
 
-# ── PATCH 1: UI 언어 토글 ──────────────────────────────────────
+# ── PATCH 1: UI 언어 토글 (Void 1.4.x) ────────────────────────
+# ce = Action2 base class, Pde = ILocaleService token,
+# CO.value() = current locale, F.CommandPalette = menu id
 if "korean-ag.toggleUiLocale" not in content:
-    new_code = (
-        "// [SonCode W19] UI Language Toggle\n"
-        "var KoreanAgToggleLocaleAction = class extends Action2 {\n"
-        "  constructor() {\n"
-        '    super({ id: "korean-ag.toggleUiLocale", title: { value: "SonCode: Toggle UI Language", original: "SonCode: Toggle UI Language" }, menu: { id: MenuId.CommandPalette } });\n'
-        "  }\n"
-        "  async run(accessor) {\n"
-        "    const localeService = accessor.get(ILocaleService);\n"
-        '    const isKorean = (globalThis._VSCODE_NLS_LANGUAGE || "en").startsWith("ko");\n'
-        '    await localeService.setLocale({ id: isKorean ? "en" : "ko", label: isKorean ? "English" : "\\ud55c\\uad6d\\uc5b4" });\n'
-        "  }\n"
-        "};\n\n"
+    toggle_cls = (
+        ',KoreanAgToggle1494=class extends ce{'
+        'static{this.ID="korean-ag.toggleUiLocale"}'
+        'constructor(){'
+        'super({id:KoreanAgToggle1494.ID,'
+        'title:{value:"SonCode: Toggle UI Language",'
+        'original:"SonCode: Toggle UI Language"},'
+        'menu:{id:F.CommandPalette}})}'
+        'async run(e){'
+        'const s=e.get(Pde),isKo=CO.value().startsWith("ko");'
+        'await s.setLocale({id:isKo?"en":"ko",'
+        'label:isKo?"English":"\\ud55c\\uad6d\\uc5b4"})}}'
     )
-    anchor = "\n// out-build/vs/workbench/contrib/localization/common/localization.contribution.js"
-    if anchor in content:
-        content = content.replace(anchor, new_code + anchor, 1)
-        old_reg = "    registerAction2(ClearDisplayLanguageAction);"
-        new_reg = old_reg + "\n    registerAction2(KoreanAgToggleLocaleAction);"
-        content = content.replace(old_reg, new_reg, 1)
+    # Anchor: end of clearLocalePreference action → zzs registration class
+    p1_old = ('async run(e){await e.get(Pde).clearLocalePreference()}},'
+              'zzs=class extends z{constructor(){super(),X(Wzs),X(Uzs),')
+    p1_new = ('async run(e){await e.get(Pde).clearLocalePreference()}}'
+              + toggle_cls
+              + ',zzs=class extends z{constructor(){super(),X(Wzs),X(Uzs),X(KoreanAgToggle1494),')
+    if p1_old in content:
+        content = content.replace(p1_old, p1_new, 1)
         print("[P1] UI Language Toggle: OK")
     else:
         errors.append("P1: localization anchor not found (version mismatch?)")
 else:
     print("[P1] UI Language Toggle: already patched")
 
-# ── PATCH 2: + 버튼 ───────────────────────────────────────────
+# ── PATCH 2: + 버튼 (Void 1.4.x) ─────────────────────────────
+# WPi = VoidChatArea, gt = JSX runtime, hh = React hooks
 if "korean-ag.plusButton" not in content:
-    has_r83  = "import_react83"       in content
-    has_r163 = "import_react163"      in content
-    has_jsx  = "import_jsx_runtime123" in content
-    if not (has_r83 and has_r163 and has_jsx):
-        errors.append(f"P2: module refs missing (react83={has_r83} react163={has_r163} jsx123={has_jsx}) — version mismatch")
+    has_wpi = "WPi=({children:" in content
+    has_gt  = "(0,gt.jsxs)" in content
+    has_hh  = "(0,hh.useCallback)" in content
+    if not (has_wpi and has_gt and has_hh):
+        errors.append(f"P2: refs missing (WPi={has_wpi} gt={has_gt} hh={has_hh}) — version mismatch")
     else:
-        patches = [
-            # P2-a: VoidChatArea2 props
-            ("  featureName,\n  loadingIcon\n}) => {",
-             "  featureName,\n  loadingIcon,\n  toolbarLeft\n}) => {", "P2a"),
-            # P2-b: bottom row restructure
-            ('void-flex void-flex-row void-justify-between void-items-end void-gap-1", children: [\n'
-             '          showModelDropdown && /* @__PURE__ */ (0, import_jsx_runtime123.jsxs)("div", { className: "void-flex void-flex-col void-gap-y-1", children: [\n'
-             '            /* @__PURE__ */ (0, import_jsx_runtime123.jsx)(ReasoningOptionSlider2, { featureName }),\n'
-             '            /* @__PURE__ */ (0, import_jsx_runtime123.jsxs)("div", { className: "void-flex void-items-center void-flex-wrap void-gap-x-2 void-gap-y-1 void-text-nowrap ", children: [\n'
-             '              featureName === "Chat" && /* @__PURE__ */ (0, import_jsx_runtime123.jsx)(ChatModeDropdown2, { className: "void-text-xs void-text-void-fg-3 void-bg-void-bg-1 void-border void-border-void-border-2 void-rounded void-py-0.5 void-px-1" }),\n'
-             '              /* @__PURE__ */ (0, import_jsx_runtime123.jsx)(ModelDropdown3, { featureName, className: "void-text-xs void-text-void-fg-3 void-bg-void-bg-1 void-rounded" })\n'
-             '            ] })\n'
-             '          ] }),',
-             'void-flex void-flex-row void-justify-between void-items-end void-gap-1", children: [\n'
-             '          /* @__PURE__ */ (0, import_jsx_runtime123.jsxs)("div", { className: "void-flex void-flex-col void-gap-y-1", children: [\n'
-             '            showModelDropdown && /* @__PURE__ */ (0, import_jsx_runtime123.jsx)(ReasoningOptionSlider2, { featureName }),\n'
-             '            /* @__PURE__ */ (0, import_jsx_runtime123.jsxs)("div", { className: "void-flex void-items-center void-flex-wrap void-gap-x-2 void-gap-y-1 void-text-nowrap", children: [\n'
-             '              toolbarLeft,\n'
-             '              showModelDropdown && featureName === "Chat" && /* @__PURE__ */ (0, import_jsx_runtime123.jsx)(ChatModeDropdown2, { className: "void-text-xs void-text-void-fg-3 void-bg-void-bg-1 void-border void-border-void-border-2 void-rounded void-py-0.5 void-px-1" }),\n'
-             '              showModelDropdown && /* @__PURE__ */ (0, import_jsx_runtime123.jsx)(ModelDropdown3, { featureName, className: "void-text-xs void-text-void-fg-3 void-bg-void-bg-1 void-rounded" })\n'
-             '            ] })\n'
-             '          ] }),', "P2b"),
-            # P2-c: openAtMenuWithPathRef ref
-            ("const textAreaRef = (0, import_react163.useRef)(null);\n"
-             "  const textAreaFnsRef = (0, import_react163.useRef)(null);\n"
-             "  const accessor = useAccessor4();",
-             "const textAreaRef = (0, import_react163.useRef)(null);\n"
-             "  const textAreaFnsRef = (0, import_react163.useRef)(null);\n"
-             "  const openAtMenuWithPathRef = (0, import_react163.useRef)(null);\n"
-             "  const accessor = useAccessor4();", "P2c"),
-            # P2-d: toolbarLeft prop
-            ("    {\n"
-             '      featureName: "Chat",\n'
-             "      onSubmit: () => onSubmit(),\n"
-             "      onAbort,\n"
-             "      isStreaming: !!isRunning,\n"
-             "      isDisabled,\n"
-             "      showSelections: true,\n"
-             "      selections,\n"
-             "      setSelections,\n"
-             "      onClickAnywhere: () => {\n"
-             "        textAreaRef.current?.focus();\n"
-             "      },",
-             "    {\n"
-             '      featureName: "Chat",\n'
-             "      onSubmit: () => onSubmit(),\n"
-             "      onAbort,\n"
-             "      isStreaming: !!isRunning,\n"
-             "      isDisabled,\n"
-             "      showSelections: true,\n"
-             "      selections,\n"
-             "      setSelections,\n"
-             "      onClickAnywhere: () => {\n"
-             "        textAreaRef.current?.focus();\n"
-             "      },\n"
-             "      toolbarLeft: PlusButtonW19(textAreaRef, openAtMenuWithPathRef, commandService),", "P2d"),
-            # P2-e: openAtMenuWithPathRef in VoidInputBox23 call
-            ("fnsRef: textAreaFnsRef,\n"
-             "          multiline: true\n"
-             "        }\n"
-             "      )\n"
-             "    }\n"
-             "  );\n"
-             "  const isLandingPage = previousMessages.length === 0;",
-             "fnsRef: textAreaFnsRef,\n"
-             "          openAtMenuWithPathRef,\n"
-             "          multiline: true\n"
-             "        }\n"
-             "      )\n"
-             "    }\n"
-             "  );\n"
-             "  const isLandingPage = previousMessages.length === 0;", "P2e"),
-            # P2-f: VoidInputBox23 function signature
-            ("function X23({ initValue, placeholder, multiline, enableAtToMention, fnsRef, className: className2, onKeyDown, onFocus, onBlur, onChangeText }, ref) {",
-             "function X23({ initValue, placeholder, multiline, enableAtToMention, fnsRef, openAtMenuWithPathRef, className: className2, onKeyDown, onFocus, onBlur, onChangeText }, ref) {", "P2f"),
-        ]
-        ok = True
-        for (old, new, label) in patches:
-            if old not in content:
-                errors.append(f"P2-{label}: anchor not found (version mismatch?)")
-                ok = False
-                break
-            content = content.replace(old, new, 1)
+        ok2 = True
 
-        if ok:
-            # P2-g: useEffect in VoidInputBox23
-            vib23_idx = content.find("var VoidInputBox23")
-            if vib23_idx >= 0:
-                region = content[vib23_idx:vib23_idx + 50000]
-                close_off = region.find("const onCloseOptionMenu = () => {")
-                if close_off >= 0:
-                    abs_idx = vib23_idx + close_off
-                    p7_old = ("const onCloseOptionMenu = () => {\n"
-                              "    setIsMenuOpen(false);\n"
-                              "  };")
-                    p7_new = (p7_old + "\n"
-                              "  (0, import_react83.useEffect)(() => {\n"
-                              "    if (!openAtMenuWithPathRef) return;\n"
-                              "    openAtMenuWithPathRef.current = async (path) => {\n"
-                              '      currentPathRef.current = JSON.stringify(path);\n'
-                              '      const newOpts = await getOptionsAtPath3(accessor, path, "") || [];\n'
-                              "      if (currentPathRef.current !== JSON.stringify(path)) return;\n"
-                              '      setOptionPath(path); setOptionText(""); setIsMenuOpen(true);\n'
-                              "      setOptionIdx(0); setOptions2(newOpts); setDidLoadInitialOptions(true);\n"
-                              "    };\n"
-                              "    return () => { if (openAtMenuWithPathRef) openAtMenuWithPathRef.current = null; };\n"
-                              "  }, [openAtMenuWithPathRef, accessor]);")
-                    before = content[:abs_idx]
-                    after  = content[abs_idx:]
-                    if after.startswith(p7_old):
-                        content = before + p7_new + after[len(p7_old):]
+        # P2a: Add toolbarLeft prop to WPi component signature
+        p2a_old = "featureName:S,loadingIcon:_})=>(0,gt.jsxs)"
+        p2a_new = "featureName:S,loadingIcon:_,toolbarLeft:C=null})=>(0,gt.jsxs)"
+        if p2a_old not in content:
+            errors.append("P2a: WPi prop anchor not found"); ok2 = False
+        else:
+            content = content.replace(p2a_old, p2a_new, 1)
 
-            # P2-h: insert PlusButtonW19 function
+        if ok2:
+            # P2b: Add C (toolbarLeft) as first child in the toolbar row
+            p2b_old = 'void-text-nowrap ",children:[S==="Chat"&&(0,gt.jsx)(rcs,'
+            p2b_new = 'void-text-nowrap ",children:[C,S==="Chat"&&(0,gt.jsx)(rcs,'
+            if p2b_old not in content:
+                errors.append("P2b: toolbar children anchor not found"); ok2 = False
+            else:
+                content = content.replace(p2b_old, p2b_new, 1)
+
+        if ok2:
+            # P2c: Pass toolbarLeft to WPi in the Chat component render
+            p2c_old = ('onClickAnywhere:()=>{i.current?.focus()},'
+                       'children:(0,gt.jsx)(TPi,{enableAtToMention:!0,')
+            p2c_new = ('onClickAnywhere:()=>{i.current?.focus()},'
+                       'toolbarLeft:PlusButtonW19(i,hh,gt),'
+                       'children:(0,gt.jsx)(TPi,{enableAtToMention:!0,')
+            if p2c_old not in content:
+                errors.append("P2c: Chat toolbarLeft anchor not found"); ok2 = False
+            else:
+                content = content.replace(p2c_old, p2c_new, 1)
+
+        if ok2:
+            # P2d: Insert PlusButtonW19 function just before the qe= assignment
             plus_code = (
                 "// [SonCode W19+] Plus button\n"
-                "function PlusButtonW19(textAreaRef, openAtMenuWithPathRef, commandService) {\n"
-                "  const [isOpen, setIsOpen] = (0, import_react163.useState)(false);\n"
-                "  const btnRef = (0, import_react163.useRef)(null);\n"
-                "  const menuRef = (0, import_react163.useRef)(null);\n"
-                "  (0, import_react163.useEffect)(() => {\n"
-                "    if (!isOpen) return;\n"
-                "    const handle = (e) => {\n"
-                "      if (btnRef.current && btnRef.current.contains(e.target)) return;\n"
-                "      if (menuRef.current && menuRef.current.contains(e.target)) return;\n"
+                "function PlusButtonW19(textAreaRef,R,Jsx){\n"
+                "  const[isOpen,setIsOpen]=R.useState(false);\n"
+                "  const btnRef=R.useRef(null);\n"
+                "  const menuRef=R.useRef(null);\n"
+                "  R.useEffect(()=>{\n"
+                "    if(!isOpen)return;\n"
+                "    const handle=(e)=>{\n"
+                "      if(btnRef.current&&btnRef.current.contains(e.target))return;\n"
+                "      if(menuRef.current&&menuRef.current.contains(e.target))return;\n"
                 "      setIsOpen(false);\n"
                 "    };\n"
-                '    document.addEventListener("mousedown", handle);\n'
-                '    return () => document.removeEventListener("mousedown", handle);\n'
-                "  }, [isOpen]);\n"
-                "  const items = [\n"
-                '    { label: "[F] File",    desc: "Code/Text",  action: () => openAtMenuWithPathRef.current && openAtMenuWithPathRef.current(["files"]) },\n'
-                '    { label: "[D] Folder",  desc: "Folder ref", action: () => openAtMenuWithPathRef.current && openAtMenuWithPathRef.current(["folders"]) },\n'
-                '    { label: "[I] Image",   desc: "Image file", action: () => openAtMenuWithPathRef.current && openAtMenuWithPathRef.current(["files"]) },\n'
-                '    { label: "/ Slash",     desc: "Quick cmd",  action: () => {\n'
-                "      const ta = textAreaRef.current; if (!ta) return;\n"
-                "      ta.focus(); const p = ta.selectionStart != null ? ta.selectionStart : ta.value.length;\n"
-                '      ta.value = ta.value.slice(0,p) + "/" + ta.value.slice(p);\n'
-                "      ta.setSelectionRange(p+1,p+1);\n"
-                '      ta.dispatchEvent(new Event("input", { bubbles: true }));\n'
-                "    }},\n"
-                '    { label: "[C] Connect", desc: "MCP",        action: () => commandService.executeCommand("workbench.action.openSettings", "void mcp") },\n'
-                '    { label: "[P] Plugin",  desc: "Extensions", action: () => commandService.executeCommand("workbench.view.extensions") }\n'
+                '    document.addEventListener("mousedown",handle);\n'
+                '    return()=>document.removeEventListener("mousedown",handle);\n'
+                "  },[isOpen]);\n"
+                "  const triggerAt=()=>{\n"
+                "    const ta=textAreaRef.current;if(!ta)return;\n"
+                "    ta.focus();\n"
+                "    const p=ta.selectionStart!=null?ta.selectionStart:ta.value.length;\n"
+                '    ta.value=ta.value.slice(0,p)+"@"+ta.value.slice(p);\n'
+                "    ta.setSelectionRange(p+1,p+1);\n"
+                '    ta.dispatchEvent(new InputEvent("input",{data:"@",bubbles:true,cancelable:true}));\n'
+                "  };\n"
+                "  const triggerSlash=()=>{\n"
+                "    const ta=textAreaRef.current;if(!ta)return;\n"
+                "    ta.focus();\n"
+                "    const p=ta.selectionStart!=null?ta.selectionStart:ta.value.length;\n"
+                '    ta.value=ta.value.slice(0,p)+"/"+ta.value.slice(p);\n'
+                "    ta.setSelectionRange(p+1,p+1);\n"
+                '    ta.dispatchEvent(new Event("input",{bubbles:true}));\n'
+                "  };\n"
+                "  const items=[\n"
+                '    {label:"@ File / Folder",desc:"mention",action:triggerAt},\n'
+                '    {label:"/ Slash command",desc:"quick cmd",action:triggerSlash}\n'
                 "  ];\n"
-                "  const _jsx = import_jsx_runtime123.jsx;\n"
-                "  const _jsxs = import_jsx_runtime123.jsxs;\n"
-                "  const _Fragment = import_react163.Fragment;\n"
-                '  return _jsxs(_Fragment, { children: [\n'
-                '    _jsx("button", {\n'
-                '      ref: btnRef, type: "button",\n'
-                '      "data-korean-ag": "korean-ag.plusButton",\n'
-                '      title: "Add: file/folder/image/slash/connect/plugin",\n'
-                "      onClick: () => setIsOpen(v => !v),\n"
-                "      style: {\n"
-                '        display: "flex", alignItems: "center", padding: "1px 3px",\n'
-                '        borderRadius: "4px", border: "none", background: "transparent",\n'
-                '        cursor: "pointer", color: "var(--vscode-foreground)",\n'
-                '        opacity: isOpen ? 1 : 0.55, fontSize: "14px", lineHeight: 1\n'
-                "      },\n"
-                '      children: "+"\n'
+                "  const _jsx=Jsx.jsx,_jsxs=Jsx.jsxs,_Frag=Jsx.Fragment;\n"
+                "  return _jsxs(_Frag,{children:[\n"
+                "    _jsx('button',{\n"
+                "      ref:btnRef,type:'button',\n"
+                "      'data-soncode':'korean-ag.plusButton',\n"
+                "      title:'Add file / slash mention',\n"
+                "      onClick:()=>setIsOpen(v=>!v),\n"
+                "      style:{display:'flex',alignItems:'center',padding:'1px 4px',\n"
+                "        borderRadius:'4px',border:'none',background:'transparent',\n"
+                "        cursor:'pointer',color:'var(--vscode-foreground)',\n"
+                "        opacity:isOpen?1:0.6,fontSize:'16px',lineHeight:1},\n"
+                "      children:'+'\n"
                 "    }),\n"
-                '    isOpen && _jsx("div", {\n'
-                "      ref: menuRef,\n"
-                "      style: {\n"
-                '        position: "fixed", zIndex: 9999,\n'
-                '        background: "var(--vscode-editor-background)",\n'
-                '        border: "1px solid var(--vscode-widget-border)",\n'
-                '        borderRadius: "6px", padding: "4px 0", minWidth: "190px",\n'
-                '        boxShadow: "0 4px 16px rgba(0,0,0,0.35)",\n'
-                '        bottom: (btnRef.current ? (window.innerHeight - btnRef.current.getBoundingClientRect().top + 4) : 40) + "px",\n'
-                '        left: (btnRef.current ? btnRef.current.getBoundingClientRect().left : 10) + "px"\n'
-                "      },\n"
-                '      children: items.map((item, i) => _jsx("button", {\n'
-                '        key: i, type: "button",\n'
-                "        onClick: () => { setIsOpen(false); item.action(); },\n"
-                "        style: {\n"
-                '          display: "flex", alignItems: "center", gap: "8px",\n'
-                '          width: "100%", padding: "5px 14px",\n'
-                '          border: "none", background: "transparent",\n'
-                '          cursor: "pointer", color: "var(--vscode-foreground)",\n'
-                '          fontSize: "13px", textAlign: "left"\n'
-                "        },\n"
-                '        onMouseEnter: e => e.currentTarget.style.background = "var(--vscode-list-hoverBackground)",\n'
-                '        onMouseLeave: e => e.currentTarget.style.background = "transparent",\n'
-                "        children: _jsxs(_Fragment, { children: [\n"
-                '          _jsx("span", { children: item.label }),\n'
-                '          _jsx("span", { style: { marginLeft: "auto", opacity: 0.5, fontSize: "11px", whiteSpace: "nowrap" }, children: item.desc })\n'
+                "    isOpen&&_jsx('div',{\n"
+                "      ref:menuRef,\n"
+                "      style:{position:'fixed',zIndex:9999,\n"
+                "        background:'var(--vscode-editor-background)',\n"
+                "        border:'1px solid var(--vscode-widget-border)',\n"
+                "        borderRadius:'6px',padding:'4px 0',minWidth:'170px',\n"
+                "        boxShadow:'0 4px 16px rgba(0,0,0,0.35)',\n"
+                "        bottom:(btnRef.current?(window.innerHeight-btnRef.current.getBoundingClientRect().top+4):40)+'px',\n"
+                "        left:(btnRef.current?btnRef.current.getBoundingClientRect().left:10)+'px'},\n"
+                "      children:items.map((item,idx)=>_jsx('button',{\n"
+                "        type:'button',\n"
+                "        onClick:()=>{setIsOpen(false);item.action();},\n"
+                "        style:{display:'flex',alignItems:'center',gap:'8px',\n"
+                "          width:'100%',padding:'5px 14px',border:'none',\n"
+                "          background:'transparent',cursor:'pointer',\n"
+                "          color:'var(--vscode-foreground)',fontSize:'13px',textAlign:'left'},\n"
+                "        onMouseEnter:e=>e.currentTarget.style.background='var(--vscode-list-hoverBackground)',\n"
+                "        onMouseLeave:e=>e.currentTarget.style.background='transparent',\n"
+                "        children:_jsxs(_Frag,{children:[\n"
+                "          _jsx('span',{children:item.label}),\n"
+                "          _jsx('span',{style:{marginLeft:'auto',opacity:0.5,fontSize:'11px'},children:item.desc})\n"
                 "        ]})\n"
-                "      }, i))\n"
+                "      },idx))\n"
                 "    })\n"
                 "  ]});\n"
                 "}\n"
             )
-            insert_before = "var VoidChatArea2 = ({"
-            if insert_before in content:
-                content = content.replace(insert_before, plus_code + insert_before, 1)
-                print("[P2] Plus Button: OK")
+            # Insert before the 'Se=' callback assignment (right before qe=WPi render)
+            p2d_old = '),Se=(0,hh.useCallback)(It=>{I(!It)},[I]),'
+            p2d_new = ')\n' + plus_code + 'Se=(0,hh.useCallback)(It=>{I(!It)},[I]),'
+            if p2d_old not in content:
+                errors.append("P2d: qe insertion anchor not found"); ok2 = False
             else:
-                errors.append("P2: VoidChatArea2 marker not found")
+                content = content.replace(p2d_old, p2d_new, 1)
+                print("[P2] Plus Button: OK")
 else:
     print("[P2] Plus Button: already patched")
 
