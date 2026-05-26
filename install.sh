@@ -96,7 +96,7 @@ if [ "$EUID" -ne 0 ]; then
     if [ -f "$0" ]; then
         exec sudo bash "$0" "$@"
     else
-        TMP=$(mktemp /tmp/soncode_install_XXXXXX.sh)
+        TMP=$(mktemp /tmp/soncode_install_XXXXXX)  # macOS mktemp: X는 맨 끝에
         curl -fsSL "https://raw.githubusercontent.com/SiChoong/soncode-mac-patches/main/install.sh" -o "$TMP"
         exec sudo bash "$TMP" "$@"
     fi
