@@ -27,26 +27,20 @@ install_void() {
 
     info "Void 최신 버전을 GitHub에서 다운로드합니다... (arch: $ARCH_KEY)"
 
-    # GitHub Releases API에서 DMG URL 탐색 (파일명 패턴 여러 개 시도)
-    LATEST_URL="https://api.github.com/repos/voideditor/void/releases/latest"
-    DOWNLOAD_URL=$(curl -fsSL "$LATEST_URL" 2>/dev/null \
+    # releases 목록 전체를 순회 → DMG 파일이 있는 가장 최신 릴리스 탐색
+    # (latest API는 빈 릴리스를 가리킬 수 있으므로 전체 목록 사용)
+    RELEASES_URL="https://api.github.com/repos/voideditor/void/releases"
+    DOWNLOAD_URL=$(curl -fsSL "$RELEASES_URL" 2>/dev/null \
         | python3 -c "
-import sys, json, re
+import sys, json
 try:
-    rel = json.load(sys.stdin)
+    rels = json.load(sys.stdin)
     arch = '$ARCH_KEY'
-    assets = rel.get('assets', [])
-    # arm64/x64 DMG 패턴 매칭 (파일명 형식 무관)
-    for a in assets:
-        name = a['name'].lower()
-        url  = a['browser_download_url']
-        if name.endswith('.dmg') and arch in name:
-            print(url); sys.exit(0)
-    # 폴백: darwin이 들어간 DMG
-    for a in assets:
-        name = a['name'].lower()
-        if name.endswith('.dmg') and 'darwin' in name:
-            print(a['browser_download_url']); sys.exit(0)
+    for rel in rels:
+        for a in rel.get('assets', []):
+            name = a['name'].lower()
+            if name.endswith('.dmg') and arch in name and 'darwin' in name:
+                print(a['browser_download_url']); sys.exit(0)
 except Exception:
     pass
 " 2>/dev/null || true)
