@@ -2,7 +2,7 @@
 # SonCode Mac 설치 스크립트
 # 사용법: bash install.sh
 # 또는 (원라이너):
-#   curl -fsSL https://raw.githubusercontent.com/han2o-group/soncode-mac-patches/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/SiChoong/soncode-mac-patches/main/install.sh | bash
 
 set -e
 
@@ -68,7 +68,14 @@ echo ""
 # ── 1. 권한 확인 ──────────────────────────────────────────────────
 if [ "$EUID" -ne 0 ]; then
     warn "관리자 권한이 필요합니다. sudo로 재실행합니다..."
-    exec sudo bash "$0" "$@"
+    # curl | bash 방식이면 $0이 파일이 아님 → 스크립트를 임시파일로 받아서 재실행
+    if [ -f "$0" ]; then
+        exec sudo bash "$0" "$@"
+    else
+        TMP=$(mktemp /tmp/soncode_install_XXXXXX.sh)
+        curl -fsSL "https://raw.githubusercontent.com/SiChoong/soncode-mac-patches/main/install.sh" -o "$TMP"
+        exec sudo bash "$TMP" "$@"
+    fi
 fi
 
 # ── 2. 설치 대상 결정 ─────────────────────────────────────────────
