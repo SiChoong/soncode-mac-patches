@@ -1,20 +1,26 @@
 #!/usr/bin/env python3
-# patch-toggle3.sh — UI 언어 토글 패치 (Void 1.4.x)
+# patch-toggle3.sh — UI 언어 토글 패치 (Void 1.0.2)
 # Usage: python3 patch-toggle3.sh
 
 import sys, os, hashlib, base64, json
 
 OUT_FILE = "/tmp/patch-result.txt"
 
-# SonCode.app → Void.app 순서로 탐색
-_BASE = "/Applications"
-for _APP in ("SonCode.app", "Void.app"):
-    _CANDIDATE = f"{_BASE}/{_APP}/Contents/Resources/app"
+# SonCode.app → Void.app, /Applications → ~/Applications 순서로 탐색
+import pathlib
+_HOME = str(pathlib.Path.home())
+_CANDIDATES = [
+    f"/Applications/SonCode.app/Contents/Resources/app",
+    f"{_HOME}/Applications/SonCode.app/Contents/Resources/app",
+    f"{_HOME}/Applications/Void.app/Contents/Resources/app",
+    f"/Applications/Void.app/Contents/Resources/app",
+]
+for _CANDIDATE in _CANDIDATES:
     if os.path.isdir(_CANDIDATE):
         APP_DIR = _CANDIDATE
         break
 else:
-    APP_DIR = f"{_BASE}/SonCode.app/Contents/Resources/app"  # 에러 메시지용
+    APP_DIR = f"/Applications/SonCode.app/Contents/Resources/app"  # 에러 메시지용
 
 WBJS = f"{APP_DIR}/out/vs/workbench/workbench.desktop.main.js"
 PROD = f"{APP_DIR}/product.json"
@@ -50,30 +56,31 @@ try:
         write_out("Already patched")
         sys.exit(0)
 
-    # ── Void 1.4.x 패치 ──────────────────────────────────────────
-    # ce = Action2 base, Pde = ILocaleService token,
-    # CO.value() = current locale, F.CommandPalette = menu id
+    # ── Void 1.0.2 패치 ──────────────────────────────────────────
+    # ne = Action2 base, Eae = ILocaleService token,
+    # dT.value() = current locale, P.CommandPalette = menu id
+    # U = registerAction2, JLn = locale contribution class
     toggle_cls = (
-        ',KoreanAgToggle1494=class extends ce{'
+        ',KoreanAgToggle102=class extends ne{'
         'static{this.ID="korean-ag.toggleUiLocale"}'
         'constructor(){'
-        'super({id:KoreanAgToggle1494.ID,'
+        'super({id:KoreanAgToggle102.ID,'
         'title:{value:"SonCode: Toggle UI Language",'
         'original:"SonCode: Toggle UI Language"},'
-        'menu:{id:F.CommandPalette}})}'
+        'menu:{id:P.CommandPalette}})}'
         'async run(e){'
-        'const s=e.get(Pde),isKo=CO.value().startsWith("ko");'
+        'const s=e.get(Eae),isKo=dT.value().startsWith("ko");'
         'await s.setLocale({id:isKo?"en":"ko",'
         'label:isKo?"English":"\\ud55c\\uad6d\\uc5b4"})}}'
     )
     anchor_old = (
-        'async run(e){await e.get(Pde).clearLocalePreference()}},'
-        'zzs=class extends z{constructor(){super(),X(Wzs),X(Uzs),'
+        'async run(e){await e.get(Eae).clearLocalePreference()}}'
+        ',JLn=class extends V{constructor(){super(),U(YLn),U(XLn),'
     )
     anchor_new = (
-        'async run(e){await e.get(Pde).clearLocalePreference()}}'
+        'async run(e){await e.get(Eae).clearLocalePreference()}}'
         + toggle_cls
-        + ',zzs=class extends z{constructor(){super(),X(Wzs),X(Uzs),X(KoreanAgToggle1494),'
+        + ',JLn=class extends V{constructor(){super(),U(YLn),U(XLn),U(KoreanAgToggle102),'
     )
 
     if anchor_old not in content:

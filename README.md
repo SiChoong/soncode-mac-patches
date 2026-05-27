@@ -10,7 +10,7 @@ Windows용 `.ps1` 스크립트를 Mac용 `bash`/`python3`으로 포팅한 버전
 터미널에서 한 줄로 설치:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/han2o-group/soncode-mac-patches/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/SiChoong/soncode-mac-patches/main/install.sh | bash
 ```
 
 > SonCode.app이 없으면 Void를 자동으로 다운로드한 뒤 패치를 적용합니다.
@@ -30,13 +30,13 @@ curl -fsSL https://raw.githubusercontent.com/han2o-group/soncode-mac-patches/mai
 ### 방법 1 — curl 원라이너 (권장)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/han2o-group/soncode-mac-patches/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/SiChoong/soncode-mac-patches/main/install.sh | bash
 ```
 
 ### 방법 2 — git clone 후 실행
 
 ```bash
-git clone https://github.com/han2o-group/soncode-mac-patches.git
+git clone https://github.com/SiChoong/soncode-mac-patches.git
 cd soncode-mac-patches
 sudo bash install.sh
 ```

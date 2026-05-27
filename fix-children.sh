@@ -6,15 +6,21 @@ import sys, os, hashlib, base64, json, subprocess
 
 OUT_FILE = "/tmp/fix-children-result.txt"
 
-# SonCode.app → Void.app 순서로 탐색
-_BASE = "/Applications"
-for _APP in ("SonCode.app", "Void.app"):
-    _CANDIDATE = f"{_BASE}/{_APP}/Contents/Resources/app"
+# SonCode.app → Void.app, /Applications → ~/Applications 순서로 탐색
+import pathlib
+_HOME = str(pathlib.Path.home())
+_CANDIDATES = [
+    f"/Applications/SonCode.app/Contents/Resources/app",
+    f"{_HOME}/Applications/SonCode.app/Contents/Resources/app",
+    f"{_HOME}/Applications/Void.app/Contents/Resources/app",
+    f"/Applications/Void.app/Contents/Resources/app",
+]
+for _CANDIDATE in _CANDIDATES:
     if os.path.isdir(_CANDIDATE):
         APP_DIR = _CANDIDATE
         break
 else:
-    APP_DIR = f"{_BASE}/SonCode.app/Contents/Resources/app"
+    APP_DIR = f"/Applications/SonCode.app/Contents/Resources/app"
 
 WBJS = f"{APP_DIR}/out/vs/workbench/workbench.desktop.main.js"
 PROD = f"{APP_DIR}/product.json"

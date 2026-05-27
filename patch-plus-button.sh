@@ -1,20 +1,26 @@
 #!/usr/bin/env python3
-# patch-plus-button.sh — 채팅 + 버튼 패치 (Void 1.4.x)
+# patch-plus-button.sh — 채팅 + 버튼 패치 (Void 1.0.2)
+# <details>/<summary> 네이티브 드롭다운 — React hooks 불필요, P2d 주입 없음
 # Usage: python3 patch-plus-button.sh
 
 import sys, os, hashlib, base64, json
 
 OUT_FILE = "/tmp/patch-plus-result.txt"
 
-# SonCode.app → Void.app 순서로 탐색
-_BASE = "/Applications"
-for _APP in ("SonCode.app", "Void.app"):
-    _CANDIDATE = f"{_BASE}/{_APP}/Contents/Resources/app"
+import pathlib
+_HOME = str(pathlib.Path.home())
+_CANDIDATES = [
+    f"/Applications/SonCode.app/Contents/Resources/app",
+    f"{_HOME}/Applications/SonCode.app/Contents/Resources/app",
+    f"{_HOME}/Applications/Void.app/Contents/Resources/app",
+    f"/Applications/Void.app/Contents/Resources/app",
+]
+for _CANDIDATE in _CANDIDATES:
     if os.path.isdir(_CANDIDATE):
         APP_DIR = _CANDIDATE
         break
 else:
-    APP_DIR = f"{_BASE}/SonCode.app/Contents/Resources/app"
+    APP_DIR = f"/Applications/SonCode.app/Contents/Resources/app"
 
 WBJS = f"{APP_DIR}/out/vs/workbench/workbench.desktop.main.js"
 PROD = f"{APP_DIR}/product.json"
@@ -50,125 +56,89 @@ try:
         write_out("Already patched")
         sys.exit(0)
 
-    # ── Void 1.4.x 모듈 참조 확인 ─────────────────────────────────
-    # WPi = VoidChatArea, gt = JSX runtime, hh = React hooks
-    has_wpi = "WPi=({children:" in content
-    has_gt  = "(0,gt.jsxs)" in content
-    has_hh  = "(0,hh.useCallback)" in content
-    if not (has_wpi and has_gt and has_hh):
-        write_out(f"ERROR: module refs missing WPi={has_wpi} gt={has_gt} hh={has_hh} (version mismatch?)")
+    # ── 버전 확인 ───────────────────────────────────────────────
+    has_vdi = "vdi=({children:i,onSubmit:e," in content
+    has_ci  = "(0,ci.jsxs)" in content
+    has_mh  = "(0,Mh.useCallback)" in content
+    if not (has_vdi and has_ci and has_mh):
+        write_out(f"ERROR: module refs missing vdi={has_vdi} ci={has_ci} Mh={has_mh}")
         sys.exit(1)
 
-    # ── P2a: WPi에 toolbarLeft prop 추가 ─────────────────────────
-    p2a_old = "featureName:S,loadingIcon:_})=>(0,gt.jsxs)"
-    p2a_new = "featureName:S,loadingIcon:_,toolbarLeft:C=null})=>(0,gt.jsxs)"
+    # ── P2a: vdi에 toolbarLeft prop 추가 ──────────────────────────
+    p2a_old = ",featureName:w,loadingIcon:C})=>(0,ci.jsxs)"
+    p2a_new = ",featureName:w,loadingIcon:C,toolbarLeft:TL=null})=>(0,ci.jsxs)"
     if p2a_old not in content:
-        write_out("ERROR: P2a - WPi prop anchor not found")
+        write_out("ERROR: P2a anchor not found")
         sys.exit(1)
     content = content.replace(p2a_old, p2a_new, 1)
 
-    # ── P2b: 툴바 children에 C(toolbarLeft) 삽입 ─────────────────
-    p2b_old = 'void-text-nowrap ",children:[S==="Chat"&&(0,gt.jsx)(rcs,'
-    p2b_new = 'void-text-nowrap ",children:[C,S==="Chat"&&(0,gt.jsx)(rcs,'
+    # ── P2b: 툴바 children에 TL 삽입 ─────────────────────────────
+    p2b_old = '"void-flex void-items-center void-flex-wrap void-gap-x-2 void-gap-y-1",children:[w==="Chat"&&(0,ci.jsx)(tFs,'
+    p2b_new = '"void-flex void-items-center void-flex-wrap void-gap-x-2 void-gap-y-1",children:[TL,w==="Chat"&&(0,ci.jsx)(tFs,'
     if p2b_old not in content:
-        write_out("ERROR: P2b - toolbar children anchor not found")
+        write_out("ERROR: P2b anchor not found")
         sys.exit(1)
     content = content.replace(p2b_old, p2b_new, 1)
 
-    # ── P2c: Chat 컴포넌트 WPi 호출에 toolbarLeft 전달 ───────────
-    p2c_old = ('onClickAnywhere:()=>{i.current?.focus()},'
-               'children:(0,gt.jsx)(TPi,{enableAtToMention:!0,')
-    p2c_new = ('onClickAnywhere:()=>{i.current?.focus()},'
-               'toolbarLeft:PlusButtonW19(i,hh,gt),'
-               'children:(0,gt.jsx)(TPi,{enableAtToMention:!0,')
+    # ── P2c: toolbarLeft에 <details> 드롭다운 버튼 직접 주입 ──────
+    # React hooks 불필요 — <details>/<summary> HTML 네이티브 드롭다운
+    # i (textarea ref)는 외부 Chat 컴포넌트 클로저로 접근
+    btn = (
+        '(0,ci.jsxs)("details",{'
+        '"data-soncode":"korean-ag.plusButton",'
+        'style:{position:"relative",display:"inline-flex",alignItems:"center"},'
+        'onClick:(e)=>{if(e.target.tagName==="BUTTON")e.currentTarget.removeAttribute("open")},'
+        'children:['
+        '(0,ci.jsx)("summary",{'
+        'style:{listStyle:"none",display:"flex",alignItems:"center",'
+        'padding:"1px 5px",borderRadius:"4px",cursor:"pointer",'
+        'color:"var(--vscode-foreground)",opacity:0.6,fontSize:"17px",'
+        'userSelect:"none",lineHeight:1},'
+        'title:"Add file / slash mention",'
+        'children:"+"'
+        '}),'
+        '(0,ci.jsxs)("div",{'
+        'style:{position:"absolute",bottom:"calc(100% + 4px)",left:0,'
+        'zIndex:9999,background:"var(--vscode-editor-background)",'
+        'border:"1px solid var(--vscode-widget-border)",'
+        'borderRadius:"6px",padding:"4px 0",minWidth:"170px",'
+        'boxShadow:"0 4px 16px rgba(0,0,0,0.35)"},'
+        'children:['
+        '(0,ci.jsx)("button",{type:"button",'
+        'style:{display:"flex",alignItems:"center",gap:"8px",width:"100%",'
+        'padding:"5px 14px",border:"none",background:"transparent",'
+        'cursor:"pointer",color:"var(--vscode-foreground)",'
+        'fontSize:"13px",textAlign:"left"},'
+        'onMouseEnter:e=>{e.currentTarget.style.background="var(--vscode-list-hoverBackground)"},'
+        'onMouseLeave:e=>{e.currentTarget.style.background="transparent"},'
+        'onClick:()=>{const ta=i.current;if(!ta)return;ta.focus();'
+        'const p=ta.selectionStart!=null?ta.selectionStart:ta.value.length;'
+        'ta.value=ta.value.slice(0,p)+"@"+ta.value.slice(p);'
+        'ta.setSelectionRange(p+1,p+1);'
+        'ta.dispatchEvent(new InputEvent("input",{data:"@",bubbles:!0,cancelable:!0}))},'
+        'children:"@ File / Folder"}),'
+        '(0,ci.jsx)("button",{type:"button",'
+        'style:{display:"flex",alignItems:"center",gap:"8px",width:"100%",'
+        'padding:"5px 14px",border:"none",background:"transparent",'
+        'cursor:"pointer",color:"var(--vscode-foreground)",'
+        'fontSize:"13px",textAlign:"left"},'
+        'onMouseEnter:e=>{e.currentTarget.style.background="var(--vscode-list-hoverBackground)"},'
+        'onMouseLeave:e=>{e.currentTarget.style.background="transparent"},'
+        'onClick:()=>{const ta=i.current;if(!ta)return;ta.focus();'
+        'const p=ta.selectionStart!=null?ta.selectionStart:ta.value.length;'
+        'ta.value=ta.value.slice(0,p)+"/"+ta.value.slice(p);'
+        'ta.setSelectionRange(p+1,p+1);'
+        'ta.dispatchEvent(new Event("input",{bubbles:!0}))},'
+        'children:"/ Slash command"}'
+        ')]})'
+        ']})'
+    )
+    p2c_old = 'onClickAnywhere:()=>{i.current?.focus()},children:(0,ci.jsx)(hdi,'
+    p2c_new = f'onClickAnywhere:()=>{{i.current?.focus()}},toolbarLeft:{btn},children:(0,ci.jsx)(hdi,'
     if p2c_old not in content:
-        write_out("ERROR: P2c - Chat toolbarLeft anchor not found")
+        write_out("ERROR: P2c anchor not found")
         sys.exit(1)
     content = content.replace(p2c_old, p2c_new, 1)
-
-    # ── P2d: PlusButtonW19 함수 삽입 (qe= 직전) ──────────────────
-    plus_code = (
-        "// [SonCode W19+] Plus button\n"
-        "function PlusButtonW19(textAreaRef,R,Jsx){\n"
-        "  const[isOpen,setIsOpen]=R.useState(false);\n"
-        "  const btnRef=R.useRef(null);\n"
-        "  const menuRef=R.useRef(null);\n"
-        "  R.useEffect(()=>{\n"
-        "    if(!isOpen)return;\n"
-        "    const handle=(e)=>{\n"
-        "      if(btnRef.current&&btnRef.current.contains(e.target))return;\n"
-        "      if(menuRef.current&&menuRef.current.contains(e.target))return;\n"
-        "      setIsOpen(false);\n"
-        "    };\n"
-        '    document.addEventListener("mousedown",handle);\n'
-        '    return()=>document.removeEventListener("mousedown",handle);\n'
-        "  },[isOpen]);\n"
-        "  const triggerAt=()=>{\n"
-        "    const ta=textAreaRef.current;if(!ta)return;\n"
-        "    ta.focus();\n"
-        "    const p=ta.selectionStart!=null?ta.selectionStart:ta.value.length;\n"
-        '    ta.value=ta.value.slice(0,p)+"@"+ta.value.slice(p);\n'
-        "    ta.setSelectionRange(p+1,p+1);\n"
-        '    ta.dispatchEvent(new InputEvent("input",{data:"@",bubbles:true,cancelable:true}));\n'
-        "  };\n"
-        "  const triggerSlash=()=>{\n"
-        "    const ta=textAreaRef.current;if(!ta)return;\n"
-        "    ta.focus();\n"
-        "    const p=ta.selectionStart!=null?ta.selectionStart:ta.value.length;\n"
-        '    ta.value=ta.value.slice(0,p)+"/"+ta.value.slice(p);\n'
-        "    ta.setSelectionRange(p+1,p+1);\n"
-        '    ta.dispatchEvent(new Event("input",{bubbles:true}));\n'
-        "  };\n"
-        "  const items=[\n"
-        '    {label:"@ File / Folder",desc:"mention",action:triggerAt},\n'
-        '    {label:"/ Slash command",desc:"quick cmd",action:triggerSlash}\n'
-        "  ];\n"
-        "  const _jsx=Jsx.jsx,_jsxs=Jsx.jsxs,_Frag=Jsx.Fragment;\n"
-        "  return _jsxs(_Frag,{children:[\n"
-        "    _jsx('button',{\n"
-        "      ref:btnRef,type:'button',\n"
-        "      'data-soncode':'korean-ag.plusButton',\n"
-        "      title:'Add file / slash mention',\n"
-        "      onClick:()=>setIsOpen(v=>!v),\n"
-        "      style:{display:'flex',alignItems:'center',padding:'1px 4px',\n"
-        "        borderRadius:'4px',border:'none',background:'transparent',\n"
-        "        cursor:'pointer',color:'var(--vscode-foreground)',\n"
-        "        opacity:isOpen?1:0.6,fontSize:'16px',lineHeight:1},\n"
-        "      children:'+'\n"
-        "    }),\n"
-        "    isOpen&&_jsx('div',{\n"
-        "      ref:menuRef,\n"
-        "      style:{position:'fixed',zIndex:9999,\n"
-        "        background:'var(--vscode-editor-background)',\n"
-        "        border:'1px solid var(--vscode-widget-border)',\n"
-        "        borderRadius:'6px',padding:'4px 0',minWidth:'170px',\n"
-        "        boxShadow:'0 4px 16px rgba(0,0,0,0.35)',\n"
-        "        bottom:(btnRef.current?(window.innerHeight-btnRef.current.getBoundingClientRect().top+4):40)+'px',\n"
-        "        left:(btnRef.current?btnRef.current.getBoundingClientRect().left:10)+'px'},\n"
-        "      children:items.map((item,idx)=>_jsx('button',{\n"
-        "        type:'button',\n"
-        "        onClick:()=>{setIsOpen(false);item.action();},\n"
-        "        style:{display:'flex',alignItems:'center',gap:'8px',\n"
-        "          width:'100%',padding:'5px 14px',border:'none',\n"
-        "          background:'transparent',cursor:'pointer',\n"
-        "          color:'var(--vscode-foreground)',fontSize:'13px',textAlign:'left'},\n"
-        "        onMouseEnter:e=>e.currentTarget.style.background='var(--vscode-list-hoverBackground)',\n"
-        "        onMouseLeave:e=>e.currentTarget.style.background='transparent',\n"
-        "        children:_jsxs(_Frag,{children:[\n"
-        "          _jsx('span',{children:item.label}),\n"
-        "          _jsx('span',{style:{marginLeft:'auto',opacity:0.5,fontSize:'11px'},children:item.desc})\n"
-        "        ]})\n"
-        "      },idx))\n"
-        "    })\n"
-        "  ]});\n"
-        "}\n"
-    )
-    p2d_old = '),Se=(0,hh.useCallback)(It=>{I(!It)},[I]),'
-    p2d_new = ')\n' + plus_code + 'Se=(0,hh.useCallback)(It=>{I(!It)},[I]),'
-    if p2d_old not in content:
-        write_out("ERROR: P2d - PlusButtonW19 insertion anchor not found")
-        sys.exit(1)
-    content = content.replace(p2d_old, p2d_new, 1)
 
     content_bytes = content.encode("utf-8")
     with open(WBJS, "w", encoding="utf-8", newline="\n") as f:
